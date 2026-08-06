@@ -1,0 +1,106 @@
+﻿@page "/expenses"
+@using System.Net.Http.Json
+
+<PageTitle>Expense Tracker</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-8">
+
+    <MudText Typo="Typo.h4" Class="mb-4">💰 Expense Tracker</MudText>
+
+    <MudPaper Class="pa-4 mb-6">
+        <MudGrid>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="newTitle" Label="Title" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudNumericField @bind-Value="newAmount" Label="Amount" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudTextField @bind-Value="newCategory" Label="Category" Variant="Variant.Outlined" />
+            </MudItem>
+            <MudItem xs="12" sm="2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" OnClick="AddExpense" Style="height:56px;">
+                    Add
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    @if (expenses == null)
+    {
+        <MudText>Loading...</MudText>
+    }
+    else
+    {
+        <MudTable Items="expenses" Hover="true">
+            <HeaderContent>
+                <MudTh>Title</MudTh>
+                <MudTh>Amount</MudTh>
+                <MudTh>Category</MudTh>
+                <MudTh>Date</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd>@context.TITLE</MudTd>
+                <MudTd>Rs. @context.AMOUNT</MudTd>
+                <MudTd>@context.CATEGORY</MudTd>
+                <MudTd>@context.EXPENSE_DATE.ToString("dd MMM yyyy")</MudTd>
+            </RowTemplate>
+        </MudTable>
+    }
+
+</MudContainer>
+
+@code {
+    private List<ExpenseModel>? expenses;
+    private string newTitle = "";
+    private decimal newAmount;
+    private string newCategory = "";
+
+    [Inject] private HttpClient Http { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadExpenses();
+    }
+
+    private async Task LoadExpenses()
+    {
+        var result = await Http.GetFromJsonAsync<ApiResponse>("api/Expense/GetAllExpenses");
+        expenses = result?.expenses;
+    }
+
+    private async Task AddExpense()
+    {
+        var newExpense = new ExpenseModel
+        {
+            TITLE = newTitle,
+            AMOUNT = newAmount,
+            CATEGORY = newCategory
+        };
+
+        await Http.PostAsJsonAsync("api/Expense/AddExpense", newExpense);
+
+        // Form clear karo
+        newTitle = "";
+        newAmount = 0;
+        newCategory = "";
+
+        // List refresh karo
+        await LoadExpenses();
+    }
+
+    public class ExpenseModel
+    {
+        public int EXPENSE_ID { get; set; }
+        public string? TITLE { get; set; }
+        public decimal AMOUNT { get; set; }
+        public string? CATEGORY { get; set; }
+        public DateTime EXPENSE_DATE { get; set; }
+    }
+
+    public class ApiResponse
+    {
+        public string? Message { get; set; }
+        public List<ExpenseModel>? expenses { get; set; }
+    }
+}
